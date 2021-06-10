@@ -10,3 +10,7 @@ Things I made (or found?) when playing around with the Wii U
   * `--full-paths` - show full paths in output
   * `--no-extract` - don't extract files, only show info
   * `--all` - show all files, including those with 0x80 bitmask in type (which probably means deleted file). only useful for title updates.
+
+# Forked from ihaveamac - changes:
+
+Included a script to automatically download a title, updates, and dlc through a search query.

@@ -1,0 +1,116 @@
+#!/bin/bash
+cd "$(dirname "$0")"
+
+
+# selecting a title from search query
+IFS_BAK=${IFS}
+IFS="
+"
+TITLE_IDS=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 $1 | grep -Eo '00050000-.*'))
+TITLE_REGIONS=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 -A 10 $1 | grep -E -A 12 '00050000-.*' | grep -Eo '(EUR)|(USA)|(JPN)'))
+TITLE_NAMES=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 $1 | grep -E -A 2 '00050000-.*' | grep -E '<td>[^0]' | cut -c 5-))
+for ((i=0; i < ${#TITLE_NAMES[@]}; i++)) do 
+    echo "  ($i) ${TITLE_IDS[$i]}: ${TITLE_NAMES[$i]} - (${TITLE_REGIONS[$i]})"
+done
+echo ""
+echo "Select which title to download:"
+read INDEX
+
+
+# show selection
+echo "Selected ${TITLE_IDS[$INDEX]}: ${TITLE_NAMES[$INDEX]} - (${TITLE_REGIONS[$INDEX]})"
+IFS=${IFS_BAK}
+
+
+obtain_title () {
+
+    # download
+    python3 ./wiiu_cdndownload.py $1
+
+    # get extraction key
+    EXTRACTION_KEY=$(curl http://vault.titlekeys.ovh/listing/ | grep -i -A 1 $1 | grep -i -E "<td>[^$1]" | cut -c 7- | rev | cut -c 7- | rev)
+    echo $EXTRACTION_KEY
+    
+    # decrypt content
+    cd ./$1
+    python3 ../wiiu_decrypt.py $EXTRACTION_KEY
+    
+    # extract content
+    python3 ../wiiu_extract.py
+    cd ../
+}
+
+
+# obtain base game
+TITLEID=$(echo "${TITLE_IDS[$INDEX]}" | tr -d "-" )
+obtain_title $TITLEID
+
+
+
+
+
+
+# selecting a update from search query
+IFS_BAK=${IFS}
+IFS="
+"
+TITLE_IDS=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 $1 | grep -Eo '0005000E-.*'))
+TITLE_REGIONS=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 -A 10 $1 | grep -E -A 12 '0005000E-.*' | grep -Eo '(EUR)|(USA)|(JPN)'))
+TITLE_NAMES=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 $1 | grep -E -A 2 '0005000E-.*' | grep -E '<td>[^0]' | cut -c 5-))
+for ((i=0; i < ${#TITLE_NAMES[@]}; i++)) do 
+    echo "  ($i) ${TITLE_IDS[$i]}: ${TITLE_NAMES[$i]} - (${TITLE_REGIONS[$i]})"
+done
+echo ""
+echo "Select which title update to download (or 'n' for none):"
+read INDEX
+IFS=${IFS_BAK}
+
+
+if [ ! "$INDEX" == "n" ]; then
+
+    # show selection
+    echo "Selected ${TITLE_IDS[$INDEX]}: ${TITLE_NAMES[$INDEX]} - (${TITLE_REGIONS[$INDEX]})"
+
+    # obtain update
+    TITLEID=$(echo "${TITLE_IDS[$INDEX]}" | tr -d "-" )
+    obtain_title $TITLEID
+fi
+
+
+while :
+do
+
+    # selecting a dlc from search query
+    IFS_BAK=${IFS}
+    IFS="
+"
+    TITLE_IDS=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 $1 | grep -Eo '0005000C-.*'))
+    TITLE_REGIONS=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 -A 10 $1 | grep -E -A 12 '0005000C-.*' | grep -Eo '(EUR)|(USA)|(JPN)'))
+    TITLE_NAMES=($(curl https://wiiubrew.org/wiki/Title_database | grep -i -B 2 $1 | grep -E -A 2 '0005000C-.*' | grep -E '<td>[^0]' | cut -c 5-))
+    for ((i=0; i < ${#TITLE_NAMES[@]}; i++)) do 
+        echo "  ($i) ${TITLE_IDS[$i]}: ${TITLE_NAMES[$i]} - (${TITLE_REGIONS[$i]})"
+    done
+    echo ""
+    echo "Select which dlc to download (or 'n' for none):"
+    read INDEX
+    IFS=${IFS_BAK}
+
+
+    if [ ! "$INDEX" == "n" ]; then
+        
+        # show selection
+        echo "Selected ${TITLE_IDS[$INDEX]}: ${TITLE_NAMES[$INDEX]} - (${TITLE_REGIONS[$INDEX]})"
+    
+        # obtain dlc
+        TITLEID=$(echo "${TITLE_IDS[$INDEX]}" | tr -d "-" )
+        obtain_title $TITLEID
+    fi
+    
+    
+    echo ""
+    echo "Download another dlc? y/n"
+    read INDEX
+    if [ "$INDEX" == "n" ]; then
+        break;
+    fi
+done
